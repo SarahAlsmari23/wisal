@@ -1,6 +1,7 @@
 # واصل wasel
-
+خلها توصل صح ...
 > بلاغك... بداية الحل
+لزيارة الموقع : Open https://wisal-peach.vercel.app.
 
 An Arabic-first (RTL) platform that helps users understand their complaint, identify the right
 Saudi government authority, and draft a professional complaint before submitting it.
@@ -14,7 +15,6 @@ npm install
 npm run dev
 ```
 
-Open https://wisal-peach.vercel.app.
 
 Copy `.env.example` to `.env.local` and fill in the Supabase and AI provider values.
 
