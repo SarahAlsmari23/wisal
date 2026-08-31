@@ -80,7 +80,16 @@ export function ChatComposer({
   }
 
   return (
-    <div className="border-border bg-background/85 border-t px-4 py-3 backdrop-blur-lg sm:px-6">
+    // Mobile chat UI review, Part 2 — the single authoritative safe-area
+    // source for this page: `pb-[max(...)]` guarantees at least the normal
+    // 0.75rem breathing room while also reserving the iOS home-indicator
+    // inset when the browser is actually rendering edge-to-edge (this app's
+    // viewport meta doesn't set `viewport-fit=cover`, so `env()` resolves to
+    // 0px today and this is a no-op in practice — kept as a deliberate,
+    // singular guard rather than duplicated across parent wrappers, so nothing
+    // needs revisiting if that ever changes). No other element in this tree
+    // adds bottom padding/margin/offset of its own.
+    <div className="border-border bg-background/85 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-lg sm:px-6">
       <div className="mx-auto w-full max-w-3xl">
         <AnimatePresence initial={false}>
           {attachment ? (
