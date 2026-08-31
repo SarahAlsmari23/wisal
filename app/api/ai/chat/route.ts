@@ -158,6 +158,22 @@ function categorizeMissingFieldsFailure(error: unknown): string {
   return error instanceof Error ? error.name : typeof error
 }
 
+// Emergency Fix — electricity-complaint root cause, defense-in-depth: with
+// no explicit budget, this route inherited Vercel's platform default
+// serverless function duration, which is tighter than the AI provider's own
+// internal timeout (Gemini/OpenAI: 20s — see GENERATE_TIMEOUT_MS in
+// lib/ai/gemini.ts / lib/ai/openai.ts). A legitimately slow-but-successful
+// generation call could therefore be killed by the platform itself before
+// the AI provider's own timeout ever had a chance to fire, surfacing to the
+// client as an opaque network failure indistinguishable from a real outage.
+// 30s gives the full retrieval+routing+missing-fields pipeline (typically
+// under 2s, confirmed via [chat] timing logs) plus the provider's own 20s
+// ceiling room to complete normally. The primary fix for the reported bug is
+// below (skipping the model call entirely once the answer is already
+// deterministic) — this export only hardens the remaining, genuinely
+// model-dependent turns.
+export const maxDuration = 30
+
 export async function POST(request: Request) {
   let payload: unknown
   try {
@@ -563,6 +579,71 @@ export async function POST(request: Request) {
         nextQuestion: null,
         nextFieldKey: nextField?.key ?? null,
         readyToGenerateComplaint: false,
+        routingPersisted,
+      },
+      { status: 200 },
+    )
+  }
+
+  // Emergency Fix — electricity-complaint bug, root cause. Confirmed via
+  // live reproduction: once missingFieldsResult.readyToGenerateComplaint is
+  // true, the response built after generation below (see the `isServerReady`
+  // ternary) ALWAYS uses the fixed COMPLETION_MESSAGE as `answer` — the
+  // model's own output is computed and then unconditionally discarded. This
+  // block used to still pay for a full generation call anyway: a live-tested
+  // Gemini call regularly took 7-14+ seconds, and with no `maxDuration` set
+  // on this route (see the export above — now fixed defensively too), the
+  // combined retrieval+routing+missing-fields+generation time could exceed
+  // Vercel's platform default function-execution budget, silently killing
+  // the function mid-request. The client then sees a bare network failure
+  // indistinguishable from a real outage and falls back to the local mocked
+  // engine (lib/wasal/chat-client.ts), displaying "تعذر معالجة طلبك حالياً"
+  // in place of the real, already-decided answer.
+  //
+  // Electricity's complaint type has only two required fields
+  // (problem_description, city — supabase complaint_types.required_fields),
+  // so it reaches readyToGenerateComplaint immediately after the city
+  // answer — the exact, deterministic trigger reported. Any other sector
+  // hits the identical risk the moment ITS last required field is answered;
+  // electricity was simply the first (and shortest) one to expose it.
+  //
+  // The condition below mirrors the identical, already-model-independent
+  // classification `finalIntent` computes after generation (Part 7.1/7.2):
+  // whenever one of these is true, `isComplaint` is guaranteed true and the
+  // model's own `result.intent` is never even consulted — so nothing here
+  // depends on output this function hasn't already produced. Exactly like
+  // the identity/out-of-scope/greeting early returns above, the model is
+  // simply never called once the eventual answer no longer depends on it.
+  const willBeComplaintIntent =
+    complaintInterruption === 'complaint_side_question' ||
+    intent === 'complaint_guidance' ||
+    intent === 'create_complaint' ||
+    explicitCreateComplaint
+  if (willBeComplaintIntent && missingFieldsResult?.readyToGenerateComplaint) {
+    const sources: ChatSource[] = retrievedDocuments.slice(0, 5).map((doc) => ({
+      id: doc.id,
+      title: doc.title,
+      entityName: doc.entityName,
+      officialUrl: doc.officialUrl,
+      similarity: doc.similarity,
+    }))
+    return NextResponse.json<ChatSuccessResponse>(
+      {
+        answer: COMPLETION_MESSAGE,
+        intent: explicitCreateComplaint
+          ? 'create_complaint'
+          : complaintInterruption === 'complaint_side_question'
+            ? 'complaint_side_question'
+            : 'complaint_guidance',
+        confidence: 'high',
+        grounded: false,
+        missingFields: [],
+        suggestedQuestions: [],
+        sources,
+        routing,
+        nextQuestion: null,
+        nextFieldKey: null,
+        readyToGenerateComplaint: true,
         routingPersisted,
       },
       { status: 200 },
