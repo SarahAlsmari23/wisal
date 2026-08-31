@@ -80,7 +80,7 @@ export function RecommendationCard({
       </Section>
 
       <Section title="ملخص البلاغ">
-        <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-line">
+        <p className="text-muted-foreground text-sm leading-relaxed break-words whitespace-pre-line">
           {analysis.summary}
         </p>
       </Section>

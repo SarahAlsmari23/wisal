@@ -1549,9 +1549,19 @@ export function WasalChat({
         // column/row for the card is only ever reserved when a card
         // actually exists (`showCardArea`), so an absent card never leaves
         // an empty desktop column.
+        //
+        // `flex-1` is unconditional (not `lg:`-only) so this root actually
+        // receives the full height `main`/the page shell already grow to
+        // (Part 8) — paired with the messages area's own `flex-1` below,
+        // this is what lets the composer land at the real bottom of the
+        // viewport on a short/empty conversation instead of stopping right
+        // after the greeting with a blank gap beneath it, while a long
+        // conversation still simply grows past the viewport and scrolls
+        // (flex-grow only ever consumes *leftover* space, never shrinks
+        // content — no `min-h-0` here on the mobile path).
         showCardArea
-          ? 'flex flex-col lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr_auto]'
-          : 'flex flex-col lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-1 lg:grid-rows-[auto_1fr_auto]'
+          ? 'flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr_auto]'
+          : 'flex flex-1 flex-col lg:grid lg:min-h-0 lg:grid-cols-1 lg:grid-rows-[auto_1fr_auto]'
       }
     >
       {/* Nothing to act on before the first message — keep the blank slate clean. */}
@@ -1597,7 +1607,13 @@ export function WasalChat({
         </div>
       )}
 
-      <div className="px-4 py-6 sm:px-6 lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:overflow-y-auto">
+      {/* `flex-1` here (paired with the root's own `flex-1` above) is what
+          absorbs the leftover space on a short/empty mobile conversation,
+          pushing the composer down to the real bottom of the viewport
+          instead of stranding it right under the greeting — a no-op on
+          desktop, where this is a grid item instead and flex-grow doesn't
+          apply. */}
+      <div className="flex-1 px-4 py-6 sm:px-6 lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
           {isEmpty && status === 'idle' ? (
             <ChatEmptyState onSelectSuggestion={(suggestion) => void handleSend(suggestion)} />

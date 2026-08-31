@@ -117,8 +117,8 @@ export function ComplaintResultCard({
       </Section>
 
       <Section title="نص البلاغ الرسمي">
-        <p className="text-foreground text-sm font-medium">{complaint.subject}</p>
-        <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
+        <p className="text-foreground text-sm font-medium break-words">{complaint.subject}</p>
+        <p className="text-muted-foreground text-sm leading-relaxed break-words whitespace-pre-wrap">
           {complaint.complaintText}
         </p>
       </Section>

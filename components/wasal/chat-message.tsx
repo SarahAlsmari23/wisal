@@ -36,10 +36,19 @@ export function ChatMessage({ message, onCreateComplaint }: ChatMessageProps) {
     >
       {isUser ? null : <WaselLogo size="sm" variant="mark" className="mt-1 shrink-0" />}
 
-      <div className={cn('flex max-w-[85%] flex-col gap-1.5 sm:max-w-[75%]')}>
+      {/* Mobile chat UI review, Part 4 — `min-w-0` lets this flex item shrink
+          below the intrinsic width of an unbroken long token (a URL, a long
+          English word); without it a flex row's default `min-width: auto`
+          would force the bubble wider than its `max-w-[85%]` cap instead of
+          wrapping, producing horizontal overflow. */}
+      <div className={cn('flex max-w-[85%] min-w-0 flex-col gap-1.5 sm:max-w-[75%]')}>
         <div
           className={cn(
-            'rounded-2xl px-4 py-3',
+            // `break-words` (overflow-wrap: break-word) is inherited, so it
+            // also reaches the plain <p> below and every element MarkdownMessage
+            // renders (paragraphs, links, inline code) without needing to
+            // touch that component — a single authoritative wrap rule here.
+            'rounded-2xl px-4 py-3 break-words',
             isUser
               ? 'bg-primary text-primary-foreground rounded-tr-md'
               : 'bg-surface border-border text-foreground shadow-soft rounded-tl-md border',
